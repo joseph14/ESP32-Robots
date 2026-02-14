@@ -19,14 +19,14 @@ Servo attachmentServo;
 #define rightMotor0 12  // \ Used for controlling rear drive motor movement.
 #define rightMotor1 13  // /
 
-#define leftBladeTilt0 17    // \ 
-#define leftBladeTilt1 16    // /
-#define rightBladeTilt0 18   // \ 
-#define rightBladeTilt1 5    // /
-#define attachmentMotor0 26  // \ 
-#define attachmentMotor1 25  // /
-#define ripperMotor0 32      //
-#define ripperMotor1 33      //
+#define leftBladeTilt0 17   
+#define leftBladeTilt1 16   
+#define rightBladeTilt0 18  
+#define rightBladeTilt1 5    
+#define attachmentMotor0 26  
+#define attachmentMotor1 25  
+#define ripperMotor0 32      
+#define ripperMotor1 33      
 
 unsigned long lastInputTime = 0;
 const unsigned long INPUT_TIMEOUT = 40;  // ms — adjust if needed
