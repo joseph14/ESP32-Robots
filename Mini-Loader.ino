@@ -22,7 +22,7 @@ Servo attachmentServo;
 #define leftBladeTilt0 17   
 #define leftBladeTilt1 16   
 #define rightBladeTilt0 18  
-#define rightBladeTilt1 5    
+#define rightBladeTilt1 19    
 #define attachmentMotor0 26  
 #define attachmentMotor1 25  
 #define ripperMotor0 32      
