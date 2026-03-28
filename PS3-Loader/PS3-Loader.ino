@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Ps3Controller.h>
+#include "../Shared/Controls.h"
 #include "Wrappers.h"
 
 unsigned long LOOP_START_NOW;
@@ -27,12 +28,8 @@ static const int STICK_DEADBAND = 30;
 static const uint32_t SERVO_STEP_MS = 20;
 
 static bool auxLightsOn = false;
-static bool moveClawServoUp = false;
-static bool moveClawServoDown = false;
-static bool moveBucketServoUp = false;
-static bool moveBucketServoDown = false;
-
 static uint32_t lastServoStepMs = 0;
+RobotControls::Controls controller;
 
 MotorWrapper rightMotor("Right Drive Motor", RIGHT_MOTOR0, RIGHT_MOTOR1, CH_NULL, 15, true);
 MotorWrapper leftMotor("Left Drive Motor", LEFT_MOTOR0, LEFT_MOTOR1, CH_NULL, 15, true);
@@ -92,30 +89,31 @@ static void processArmStick(int ry) {
   }
 }
 
-void notify() {
-  if (abs(Ps3.event.analog_changed.stick.lx) + abs(Ps3.event.analog_changed.stick.ly) > 2) {
-    processDriveStick(Ps3.data.analog.stick.lx, Ps3.data.analog.stick.ly);
-  }
+static RobotControls::ControlsInput readPs3Controls() {
+  RobotControls::ControlsInput in;
+  in.axisX = RobotControls::NormalizeAxis(Ps3.data.analog.stick.lx, 128.0f);
+  in.axisY = RobotControls::NormalizeAxis(Ps3.data.analog.stick.ly, 128.0f);
+  in.axisRX = RobotControls::NormalizeAxis(Ps3.data.analog.stick.rx, 128.0f);
+  in.axisRY = RobotControls::NormalizeAxis(Ps3.data.analog.stick.ry, 128.0f);
 
-  if (abs(Ps3.event.analog_changed.stick.rx) + abs(Ps3.event.analog_changed.stick.ry) > 2) {
-    processArmStick(Ps3.data.analog.stick.ry);
-  }
+  in.leftBumper = Ps3.data.button.l1;
+  in.rightBumper = Ps3.data.button.r1;
+  in.leftTrigger = Ps3.data.button.l2;
+  in.rightTrigger = Ps3.data.button.r2;
+  in.thumbL = Ps3.data.button.l3;
+  in.thumbR = Ps3.data.button.r3;
 
-  if (Ps3.event.button_down.l1) moveClawServoUp = true;
-  if (Ps3.event.button_up.l1) moveClawServoUp = false;
+  in.a = Ps3.data.button.cross;
+  in.b = Ps3.data.button.circle;
+  in.x = Ps3.data.button.square;
+  in.y = Ps3.data.button.triangle;
 
-  if (Ps3.event.button_down.r1) moveClawServoDown = true;
-  if (Ps3.event.button_up.r1) moveClawServoDown = false;
+  if (Ps3.data.button.up) in.dpad = 1;
+  else if (Ps3.data.button.down) in.dpad = 2;
+  else in.dpad = 0;
 
-  if (Ps3.event.button_down.l2) moveBucketServoDown = true;
-  if (Ps3.event.button_up.l2) moveBucketServoDown = false;
-
-  if (Ps3.event.button_down.r2) moveBucketServoUp = true;
-  if (Ps3.event.button_up.r2) moveBucketServoUp = false;
-
-  if (Ps3.event.button_down.r3) {
-    toggleAuxLights();
-  }
+  in.logChanges = false;
+  return in;
 }
 
 void onConnect() {
@@ -126,15 +124,15 @@ static void updateServos() {
   if (LOOP_START_NOW - lastServoStepMs < SERVO_STEP_MS) return;
   lastServoStepMs = LOOP_START_NOW;
 
-  if (moveClawServoUp && !moveClawServoDown) {
+  if (controller.leftBumper && !controller.rightBumper) {
     clawServo.moveTo(clawServo.Position() + 1);
-  } else if (moveClawServoDown && !moveClawServoUp) {
+  } else if (controller.rightBumper && !controller.leftBumper) {
     clawServo.moveTo(clawServo.Position() - 1);
   }
 
-  if (moveBucketServoUp && !moveBucketServoDown) {
+  if (controller.rightTrigger && !controller.leftTrigger) {
     bucketServo.moveTo(bucketServo.Position() + 1);
-  } else if (moveBucketServoDown && !moveBucketServoUp) {
+  } else if (controller.leftTrigger && !controller.rightTrigger) {
     bucketServo.moveTo(bucketServo.Position() - 1);
   }
 }
@@ -152,7 +150,6 @@ void setup() {
   bucketServo.begin();
   clawServo.begin();
 
-  Ps3.attach(notify);
   Ps3.attachOnConnect(onConnect);
   Ps3.begin("a0:5a:5a:a0:0f:98");
 
@@ -169,6 +166,10 @@ void loop() {
     return;
   }
 
+  controller.updateFrom(readPs3Controls());
+  processDriveStick(Ps3.data.analog.stick.lx, Ps3.data.analog.stick.ly);
+  processArmStick(Ps3.data.analog.stick.ry);
+  if (controller.thumbR.rising()) toggleAuxLights();
   updateServos();
   delay(10);
 }
