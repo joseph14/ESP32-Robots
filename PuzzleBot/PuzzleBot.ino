@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>  // by Kevin Harrington
 #include <Bluepad32.h>
-#include <type_traits>
+#include "../Shared/Controls.h"
 #define BP32_MAX_GAMEPADS 1
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 unsigned long LOOP_START_NOW;
@@ -99,129 +99,8 @@ ServoWrapper frontRightServo ("Spare Servo",GIO19Pin,  90, 11.62, 168.38 ,true);
 int buttonSwitchTime = 0;
 
 bool auxLedsOn = false;
-
-template <typename T>
-class Tracked {
-    static_assert(
-    std::is_arithmetic<T>::value || std::is_enum<T>::value,
-    "Tracked<T> requires arithmetic or enum type"
-  );
-public:
-  Tracked() : _value(), _old(), _changed(false) {}
-  explicit Tracked(const T& initial) : _value(initial), _old(initial), _changed(false) {}
-
-  bool set(const T& v1) {
-    if (v1 == _value) { _changed = false; return false; }
-    _old = _value;
-    _value = v1;
-    _changed = true;
-    return true;
-  }
-
-  Tracked& operator=(const T& v1) { set(v1); return *this; }
-
-  const T& value() const { return _value; }
-  const T& old()   const { return _old; }
-
-  bool changed() const { return _changed; }
-  void clearChanged() { _changed = false; }
-
-  // Generic “direction” edges: works for bool, ints, floats, enums (if comparable)
-  bool rising()  const { return _changed && (_value > _old); }
-  bool falling() const { return _changed && (_value < _old); }
-
-  // Useful extras
-  bool wentTo(const T& v1)   const { return _changed && (_value == v1); }
-  bool cameFrom(const T& v1) const { return _changed && (_old == v1); }
-
-  // Threshold crossing helpers (great for axes / deadbands)
-  bool crossedUp(const T& threshold) const {
-    return _changed && (_old < threshold) && (_value >= threshold);
-  }
-  bool crossedDown(const T& threshold) const {
-    return _changed && (_old > threshold) && (_value <= threshold);
-  }
-
-  operator T() const { return _value; }
-
-private:
-  T _value;
-  T _old;
-  bool _changed;
-};
-
-
-
-
-
-float NormalizeAxis(int Axis){
-  float norm = (float)Axis / 512.0f;
-  if (norm>1) norm=1;
-  if (norm<-1) norm =-1;
-  return norm;
-}
-
-struct Controls {
-  Tracked<float>  axisY, axisX, axisRY, axisRX;
-  Tracked<bool> thumbL, thumbR;
-  Tracked<bool> rightBumper, leftBumper;
-  Tracked<bool> rightTrigger, leftTrigger;
-  Tracked<bool> a, b, x, y;
-  Tracked<int>  dpad;
-  Tracked<bool> dpadUp, dpadDown;
-
-  bool updateFrom(ControllerPtr ctl) {
-    bool changed = false;
-
-    changed |= axisY.set(NormalizeAxis(ctl->axisY()));
-    changed |= axisX.set(NormalizeAxis(ctl->axisX()));
-    changed |= axisRY.set(NormalizeAxis(ctl->axisRY()));
-    changed |= axisRX.set(NormalizeAxis(ctl->axisRX()));
-
-    changed |= thumbL.set(ctl->thumbL());
-    changed |= thumbR.set(ctl->thumbR());
-
-    changed |= rightBumper.set(ctl->r1());
-    changed |= leftBumper.set(ctl->l1());
-
-    changed |= rightTrigger.set(ctl->r2());
-    changed |= leftTrigger.set(ctl->l2());
-
-    changed |= a.set(ctl->a());
-    changed |= b.set(ctl->b());
-    changed |= x.set(ctl->x());
-    changed |= y.set(ctl->y());
-
-    int newDpad = ctl->dpad();
-    changed |= dpad.set(newDpad);
-    changed |= dpadUp.set(newDpad == 1);
-    changed |= dpadDown.set(newDpad == 2);
-
-    if (changed) {
-      Serial.printf(
-        "axisY=%.3f axisX=%.3f axisRY=%.3f axisRX=%.3f | "
-        "thumbL=%d thumbR=%d | "
-        "LB=%d RB=%d LT=%d RT=%d | "
-        "A=%d B=%d X=%d Y=%d | "
-        "dpad=%d (U=%d D=%d) | "
-        "changed=%d\n",
-        axisY.value(), axisX.value(), axisRY.value(), axisRX.value(),
-        thumbL.value(), thumbR.value(),
-        leftBumper.value(), rightBumper.value(), leftTrigger.value(), rightTrigger.value(),
-        a.value(), b.value(), x.value(), y.value(),
-        dpad.value(), dpadUp.value(), dpadDown.value(),
-        changed
-      );
-    }
-
-    return changed;
-  }
-};
-
-
-
-
-
+using RobotControls::Controls;
+using RobotControls::ReadBluepadControls;
 Controls controller;
 
 void onConnectedController(ControllerPtr ctl) {
@@ -607,7 +486,7 @@ void processControllers() {
     if (myController && myController->isConnected() && myController->hasData()) {
       if (myController->isGamepad()) {
         lastInputTime = LOOP_START_NOW;
-        controller.updateFrom(myController);
+        controller.updateFrom(ReadBluepadControls(myController));
       } else {
         Serial.println("Unsupported controller");
       }
