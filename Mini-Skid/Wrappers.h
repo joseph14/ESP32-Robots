@@ -43,8 +43,8 @@ public:
 
   enum class State : uint8_t { Off = 0, Forward, Reverse, PWMForward, PWMReverse };
 
-  MotorWrapper(const char* name, int pin0, int pin1, int ch, int deadband = 15, bool debug = false)
-      : GenericWrapper(name, debug), _p0(pin0), _p1(pin1), _ch(ch), _deadband(deadband) {}
+  MotorWrapper(const char* name, int pin0, int pin1, int ch, float deadband = 0.05f, bool debug = false)
+      : GenericWrapper(name, debug), _p0(pin0), _p1(pin1), _ch(ch), _deadband(deadband*255) {}
 
   void begin() {
     pinMode(_p0, OUTPUT);

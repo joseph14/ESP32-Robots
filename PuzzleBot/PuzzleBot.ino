@@ -1,12 +1,17 @@
 #include <Arduino.h>
-#include <ESP32Servo.h>  // by Kevin Harrington
 #include <Bluepad32.h>
-#include "../Shared/Controls.h"
+#include "Controls.h"
 #define BP32_MAX_GAMEPADS 1
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 unsigned long LOOP_START_NOW;
 unsigned long lastInputDelta;
 unsigned long lastInputTime;
+
+struct LedState {
+  uint8_t level;   // 0..255
+  bool blink;      // turn signal
+};
+
 
 enum class MacroType : uint8_t { None=0, RotateLeftStep, RotateRightStep,StepLeft,StepRight};
 
@@ -79,10 +84,10 @@ static const int CH_NULL = -1;
 
 
 // Create motors
-MotorWrapper rearLeftMotor(  "Rear Drive Motor" ,LT_MTR0 , LT_MTR1 ,CH_MTR ,15,true);
-MotorWrapper rearRightMotor( "Front Drive Motor",RT_MTR0 , RT_MTR1 ,CH_MTR ,15,true);
-MotorWrapper frontLeftMotor(       "Lift Motor"       ,LBL_MTR0, LBL_MTR1,CH_MTR ,15,true);
-MotorWrapper frontRightMotor(       "Tilt Motor"       ,RBL_MTR1, RBL_MTR0,CH_MTR ,15,true);
+MotorWrapper rearLeftMotor(  "rearLeftMotor" ,LT_MTR1 , LT_MTR0 ,CH_MTR ,15,true);
+MotorWrapper rearRightMotor( "rearRightMotor",RT_MTR1 , RT_MTR0 ,CH_MTR ,15,true);
+MotorWrapper frontLeftMotor(  "frontLeftMotor"      ,LBL_MTR1, LBL_MTR0,CH_MTR ,15,true);
+MotorWrapper frontRightMotor( "frontRightMotor"     ,RBL_MTR0, RBL_MTR1,CH_MTR ,15,true);
 MotorWrapper vacuumPumpMotor( "Attachment Motor" ,BLD_T0  , BLD_T1  ,CH_PUMP,15,true);
 MotorWrapper spareMotor(      "Spare Motor"      ,RPR0,     RPR1,    CH_NULL,15,true);
 // Create Leds
@@ -379,10 +384,6 @@ void processSteering(float x,float y){
 }
 
 
-struct LedState {
-  uint8_t level;   // 0..255
-  bool blink;      // turn signal
-};
 
 
 // Blink timing state

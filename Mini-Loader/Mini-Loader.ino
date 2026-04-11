@@ -1,12 +1,20 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>  // by Kevin Harrington
 #include <Bluepad32.h>
-#include "../Shared/Controls.h"
+#include "Controls.h"
+#include "Wrappers.h"
 #define BP32_MAX_GAMEPADS 1
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 unsigned long LOOP_START_NOW;
 unsigned long lastInputDelta;
 unsigned long lastInputTime;
+
+
+
+struct LedState {
+  uint8_t level;   // 0..255
+  bool blink;      // turn signal
+};
 
 enum class MacroType : uint8_t { None=0, RotateLeftStep, RotateRightStep,StepLeft,StepRight};
 
@@ -36,7 +44,6 @@ static uint32_t bootMs = 0;
 
 
 
-#include "Wrappers.h"
 
 #define LT1 15
 #define LT2 27
@@ -178,9 +185,7 @@ void processTool()
   else if (controller.leftTrigger) attachmentMotor.reverse(50);
 
 
-  if (controller.x.rising()) {
-    attachmentServo.moveTo(attachmentServo.Position() < 60 ? 115 : 10);
-  }
+
 
 
 }
@@ -214,10 +219,6 @@ void processSteering(float axisValue) {
 }
 
 
-struct LedState {
-  uint8_t level;   // 0..255
-  bool blink;      // turn signal
-};
 
 
 // Blink timing state
@@ -621,6 +622,12 @@ void loop() {
     motorsActive = true;
     ledsActive = true;
     servoActive = true;
+
+    if (controller.x.rising()) {
+     attachmentServo.moveTo(attachmentServo.Position() < 60 ? 115 : 10);
+    }
+
+
     //Serial.printf("dataUpdated End\n");
   }
   else { 
